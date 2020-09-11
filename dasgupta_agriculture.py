@@ -1,6 +1,6 @@
 """
-Ag analysis for NCI project. This is based off the IPBES-Pollination
-project so that Peter can run specific landcover maps with given price data.
+Pollination sufficiency analysis. This is based off the IPBES-Pollination
+project so that we can run on any new LULC scenarios with ESA classification.
 """
 import argparse
 import collections
@@ -801,7 +801,7 @@ def dot_prod_op(scalar, *raster_nodata_list):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='NCI Pollination Analysis')
+    parser = argparse.ArgumentParser(description='Pollination Analysis')
     parser.add_argument(
         'landcover rasters', type=str, nargs='+',
         help=(
