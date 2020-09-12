@@ -76,7 +76,7 @@ def calculate_for_landcover(task_graph, landcover_path):
             work.
         landcover_path (str): path to a landcover map with globio style
             landcover codes.
-        
+
     Returns:
         None.
     """
@@ -87,7 +87,7 @@ def calculate_for_landcover(task_graph, landcover_path):
             os.makedirs(dir_path)
         except OSError:
             pass
-    
+
 
         #NEEDED
     # The proportional area of natural within 2 km was calculated for every
@@ -182,10 +182,6 @@ def calculate_for_landcover(task_graph, landcover_path):
             pollhab_2km_prop_task, mask_task_path_map['ag'][0]],
         task_name=f"""poll_suff_ag_coverage_prop {
             os.path.basename(pollinator_suff_hab_path)}""")
-
-
-    task_graph.close()
-    task_graph.join()
 
 
 def build_spatial_index(vector_path):
@@ -797,9 +793,6 @@ def dot_prod_op(scalar, *raster_nodata_list):
     return result
 
 
-
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pollination Analysis')
     parser.add_argument(
@@ -829,7 +822,7 @@ if __name__ == '__main__':
             pass
 
     time.sleep(1.0)
-    
+
     for landcover_path in landcover_raster_list:
         LOGGER.info("process landcover map: %s", landcover_path)
         calculate_for_landcover(task_graph, landcover_path)
