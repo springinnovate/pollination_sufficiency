@@ -131,8 +131,7 @@ def calculate_for_landcover(task_graph, landcover_path):
             pollhab_2km_prop_path],
         kwargs={
             'working_dir': CHURN_DIR,
-            'ignore_nodata_and_edges': True,
-            'n_threads': 4},
+            'ignore_nodata_and_edges': True},
         dependent_task_list=[mask_task_path_map['hab'][0], kernel_task],
         target_path_list=[pollhab_2km_prop_path],
         task_name=(
