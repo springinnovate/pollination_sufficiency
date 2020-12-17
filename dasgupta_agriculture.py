@@ -33,8 +33,8 @@ LANDCOVER_DATA_MAP = {
     'data_suffix': 'landcover raster.tif',
 }
 
-# set a 1GB limit for the cache
-gdal.SetCacheMax(2**30)
+# set a limit for the cache
+gdal.SetCacheMax(2**28)
 
 logging.basicConfig(
     level=logging.DEBUG,
