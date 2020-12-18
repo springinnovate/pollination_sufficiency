@@ -13,8 +13,8 @@ import raster_calculations_core
 import compress_and_overview
 
 BASE_RASTER_URL_MAP = {
-    'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa_md5_0fb6bd172901703755b33dae2c9f1b92.tif',
-    'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/masked_nathab_esa_md5_40577bae3ef60519b1043bb8582a07af.tif',
+    'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2000_md5_816e22aaf1e87d200e65ba2f1edbb4b4.tif',
+    'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2000-v2.0.7_hab_mask_md5_3429a6963bb239da624783ee9dc44f58.tif',
 }
 
 
