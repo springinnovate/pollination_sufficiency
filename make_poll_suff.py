@@ -43,7 +43,7 @@ logging.basicConfig(
         '%(asctime)s (%(relativeCreated)d) %(levelname)s %(name)s'
         ' [%(pathname)s.%(funcName)s:%(lineno)d] %(message)s'),
     stream=sys.stdout)
-LOGGER = logging.getLogger('nci_pollination')
+LOGGER = logging.getLogger('pollination')
 logging.getLogger('taskgraph').setLevel(logging.INFO)
 
 _MULT_NODATA = -1
@@ -62,7 +62,7 @@ GLOBIO_AG_CODES = [2, (10, 40), (230, 232)]
 GLOBIO_NATURAL_CODES = [6, (50, 180)]
 BMP_LULC_CODES = [300]
 
-WORKING_DIR = './nci_ag_workspace'
+WORKING_DIR = './workspace_poll_suff'
 ECOSHARD_DIR = os.path.join(WORKING_DIR, 'ecoshard_dir')
 CHURN_DIR = os.path.join(WORKING_DIR, 'churn')
 
