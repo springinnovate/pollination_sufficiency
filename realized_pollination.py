@@ -103,8 +103,7 @@ def main():
                 'GTiff', (
                     'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=ZSTD',
                     'PREDICTOR=1', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256',
-                    'NUM_THREADS=2')),
-                'n_threads': 4},
+                    'NUM_THREADS=2'))},
         dependent_task_list=[kernel_task],
         target_path_list=[ppl_fed_reach_raster_path],
         task_name=(
