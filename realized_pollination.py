@@ -13,8 +13,10 @@ import raster_calculations_core
 import compress_and_overview
 
 BASE_RASTER_URL_MAP = {
-    'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2018_md5_70108076f518142b7c4c367f50bf0506.tif',
-    'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2018-v2.1.1_hab_mask_md5_9afb78a2cc68a7bf6bba947761d74fc3.tif',
+    #'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2018_md5_70108076f518142b7c4c367f50bf0506.tif',
+    'ppl_fed': 'https://storage.googleapis.com/critical-natural-capital-ecoshards/monfreda_2008_yield_poll_dep_ppl_fed_5min.tif',
+    'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI_PNV_iis_OA_ESAclasses_max_ESAresproj_md5_e6575db589abb52c683d44434d428d80_hab_mask.tif',
+    #'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2018-v2.1.1_hab_mask_md5_9afb78a2cc68a7bf6bba947761d74fc3.tif',
 }
 
 
