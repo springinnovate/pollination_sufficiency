@@ -7,7 +7,7 @@ import logging
 
 import taskgraph
 import pygeoprocessing
-import gdal
+from osgeo import gdal
 
 logging.basicConfig(
     level=logging.INFO,
