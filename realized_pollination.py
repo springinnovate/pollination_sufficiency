@@ -142,13 +142,24 @@ def main():
         hab_fetch_path_map[raster_id] = raster_path
     task_graph.join()
 
+    aligned_ppl_fed_raster_path = (
+        '%s_aligned%s' % os.path.splitext(hab_fetch_path_map['ppl_fed']))
+    align_ppl_fed_per_pixel_task = task_graph.add_task(
+        func=_align_and_adjust_area,
+        args=(
+            hab_fetch_path_map['hab_mask'],
+            hab_fetch_path_map['ppl_fed'],
+            aligned_ppl_fed_raster_path),
+        target_path_list=[aligned_ppl_fed_raster_path],
+        task_name=f'align and adjust area for {aligned_ppl_fed_raster_path}')
+
     # calculate extent of ppl fed by 2km.
     ppl_fed_per_pixel_raster_path = os.path.join(
         CHURN_DIR, 'ppl_fed_per_pixel.tif')
     ppl_fed_per_pixel_task = task_graph.add_task(
         func=pygeoprocessing.convolve_2d,
         args=[
-            (hab_fetch_path_map['ppl_fed'], 1), (kernel_raster_path, 1),
+            (aligned_ppl_fed_raster_path, 1), (kernel_raster_path, 1),
             ppl_fed_per_pixel_raster_path],
         kwargs={
             'working_dir': CHURN_DIR,
@@ -181,7 +192,7 @@ def main():
     norm_by_hab_pixel_task = task_graph.add_task(
         func=norm_by_hab_pixels,
         args=(
-            hab_fetch_path_map['ppl_fed'],
+            aligned_ppl_fed_raster_path,
             hab_fetch_path_map['hab_mask'],
             kernel_raster_path,
             ppl_fed_div_hab_pixels_raster_path,
