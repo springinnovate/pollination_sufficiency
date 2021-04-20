@@ -95,13 +95,14 @@ def norm_by_hab_pixels(
     # calculate count of hab pixels within 2km.
     hab_pixels_within_2km_raster_path = os.path.join(
         CHURN_DIR, 'hab_pixels_within_2km.tif')
-    pygeoprocessing.convolve_2d(
-        (hab_mask_raster_path, 1), (kernel_raster_path, 1),
-        hab_pixels_within_2km_raster_path,
-        working_dir=CHURN_DIR,
-        mask_nodata=False,
-        ignore_nodata_and_edges=False,
-        normalize_kernel=False)
+    if not os.path.exists(hab_pixels_within_2km_raster_path):
+        pygeoprocessing.convolve_2d(
+            (hab_mask_raster_path, 1), (kernel_raster_path, 1),
+            hab_pixels_within_2km_raster_path,
+            working_dir=CHURN_DIR,
+            mask_nodata=False,
+            ignore_nodata_and_edges=False,
+            normalize_kernel=False)
     pygeoprocessing.raster_calculator(
         [(ppl_fed_raster_path, 1), (hab_pixels_within_2km_raster_path, 1)],
         _div_op, ppl_fed_div_hab_pixels_raster_path, gdal.GDT_Float32, -1)
@@ -186,7 +187,9 @@ def main():
             ppl_fed_div_hab_pixels_raster_path,
             norm_ppl_fed_within_2km_pixels_raster_path),
         dependent_task_list=[kernel_task],
-        target_path_list=[ppl_fed_div_hab_pixels_raster_path],
+        target_path_list=[
+            ppl_fed_div_hab_pixels_raster_path,
+            norm_ppl_fed_within_2km_pixels_raster_path],
         task_name='calc ppl fed div hab pixels')
 
     aligned_norm_ppl_fed_per_pixel_raster_path = (
