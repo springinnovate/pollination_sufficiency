@@ -800,7 +800,6 @@ if __name__ == '__main__':
             'Paths or patterns to landcover rasters that use ESA style '
             'encoding.'))
     args = parser.parse_args()
-    print(args)
     landcover_raster_list = []
     for glob_pattern in vars(args)['landcover rasters']:
         for raster_path in glob.glob(glob_pattern):
