@@ -14,12 +14,9 @@ from pygeoprocessing.geoprocessing import _create_latitude_m2_area_column
 
 BASE_RASTER_URL_MAP = {
     #'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2018_md5_70108076f518142b7c4c367f50bf0506.tif',
-<<<<<<< HEAD
     'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2015_md5_0fb6bd172901703755b33dae2c9f1b92.tif',
-=======
     #'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2015_md5_0fb6bd172901703755b33dae2c9f1b92.tif',
     'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2000_md5_816e22aaf1e87d200e65ba2f1edbb4b4.tif',
->>>>>>> 1887bb2cdb7759429e0a97a4e1f7ca396626dcab
     #'ppl_fed': 'https://storage.googleapis.com/critical-natural-capital-ecoshards/monfreda_2008_yield_poll_dep_ppl_fed_5min.tif',
     #'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI_PNV_iis_OA_ESAclasses_max_ESAresproj_md5_e6575db589abb52c683d44434d428d80_hab_mask.tif',
     #'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2018-v2.1.1_hab_mask_md5_9afb78a2cc68a7bf6bba947761d74fc3.tif',
@@ -130,6 +127,14 @@ def main():
             os.makedirs(dir_path)
         except OSError:
             pass
+    parser = argparse.ArgumentParser(description='Realized Pollination')
+    parser.add_argument(
+        'ppl_fed_path', type=str,
+        help='Paths to people fed raster')
+    parser.add_argument(
+        'hab_mask', type=str,
+        help='Paths to habitat mask')
+    args = parser.parse_args()
     task_graph = taskgraph.TaskGraph(CHURN_DIR, 4, 5.0)
     kernel_raster_path = os.path.join(CHURN_DIR, 'radial_kernel.tif')
     kernel_task = task_graph.add_task(
@@ -138,24 +143,14 @@ def main():
         target_path_list=[kernel_raster_path],
         task_name='make convolution kernel')
     hab_fetch_path_map = {}
-    # download hab mask and ppl fed equivalent raster
-    for raster_id, raster_url in BASE_RASTER_URL_MAP.items():
-        raster_path = os.path.join(ECOSHARD_DIR, os.path.basename(raster_url))
-        _ = task_graph.add_task(
-            func=ecoshard.download_url,
-            args=(raster_url, raster_path),
-            target_path_list=[raster_path],
-            task_name='fetch hab mask')
-        hab_fetch_path_map[raster_id] = raster_path
-    task_graph.join()
 
     aligned_ppl_fed_raster_path = (
         '%s_aligned%s' % os.path.splitext(hab_fetch_path_map['ppl_fed']))
     align_ppl_fed_per_pixel_task = task_graph.add_task(
         func=_align_and_adjust_area,
         args=(
-            hab_fetch_path_map['hab_mask'],
-            hab_fetch_path_map['ppl_fed'],
+            args['hab_mask'],
+            args['ppl_fed'],
             aligned_ppl_fed_raster_path),
         target_path_list=[aligned_ppl_fed_raster_path],
         task_name=f'align and adjust area for {aligned_ppl_fed_raster_path}')

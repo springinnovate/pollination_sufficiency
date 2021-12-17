@@ -41,8 +41,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format=(
         '%(asctime)s (%(relativeCreated)d) %(levelname)s %(name)s'
-        ' [%(pathname)s.%(funcName)s:%(lineno)d] %(message)s'),
-    stream=sys.stdout)
+        ' [%(pathname)s.%(funcName)s:%(lineno)d] %(message)s'))
 LOGGER = logging.getLogger('pollination')
 logging.getLogger('taskgraph').setLevel(logging.INFO)
 
@@ -801,6 +800,7 @@ if __name__ == '__main__':
             'Paths or patterns to landcover rasters that use ESA style '
             'encoding.'))
     args = parser.parse_args()
+    print(args)
     landcover_raster_list = []
     for glob_pattern in vars(args)['landcover rasters']:
         for raster_path in glob.glob(glob_pattern):
