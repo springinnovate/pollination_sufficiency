@@ -1,4 +1,5 @@
 """Map people fed equivalents back to ESA habitat."""
+import argparse
 import os
 import logging
 import sys
@@ -118,7 +119,6 @@ def norm_by_hab_pixels(
         mask_nodata=False,
         ignore_nodata_and_edges=False,
         normalize_kernel=False)
-
 
 def main():
     """Entry point."""
