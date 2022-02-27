@@ -12,8 +12,7 @@ import subprocess
 import raster_calculations_core
 from osgeo import gdal
 from osgeo import osr
-import taskgraph
-#import pygeoprocessing
+from ecoshard import taskgraph
 import ecoshard.geoprocessing as pygeoprocessing
 
 gdal.SetCacheMax(2**30)
@@ -67,9 +66,9 @@ def main():
            'expression': 'raster1*raster2*raster3*(raster4>0)+(raster4<1)*-9999',
            'symbol_to_path_map': {
                'raster1': "monfreda_2008_yield_poll_dep_ppl_fed_5min.tif", #https://storage.googleapis.com/critical-natural-capital-ecoshards/monfreda_2008_yield_poll_dep_ppl_fed_5min.tif
-               'raster2': r"workspace_poll_suff\churn\poll_suff_hab_ag_coverage_rasters\poll_suff_ag_coverage_prop_10s_Sc3v1_PNVnoag_md5_c07865b995f9ab2236b8df0378f9206f",
+               'raster2': r"D:\repositories\pollination_sufficiency\workspace_poll_suff\churn\poll_suff_hab_ag_coverage_rasters\poll_suff_ag_coverage_prop_10s_Sc3v1_PNVnoag_md5_c07865b995f9ab2236b8df0378f9206f.tif",
                'raster3': "esa_pixel_area_ha_md5_1dd3298a7c4d25c891a11e01868b5db6.tif", # https://storage.googleapis.com/ecoshard-root/esa_pixel_area_ha_md5_1dd3298a7c4d25c891a11e01868b5db6.tif
-               'raster4': r"workspace_poll_suff\churn\ag_mask\Sc3v1_PNVnoag_md5_c07865b995f9ab2236b8df0378f9206f_ag_mask.tif"
+               'raster4': r"D:\repositories\pollination_sufficiency\workspace_poll_suff\churn\ag_mask\Sc3v1_PNVnoag_md5_c07865b995f9ab2236b8df0378f9206f_ag_mask.tif",
             },
             'target_nodata': -9999,
             'target_pixel_size': (0.0027777777777777778,-0.0027777777777777778),

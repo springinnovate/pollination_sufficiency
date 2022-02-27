@@ -8,15 +8,99 @@ import tempfile
 import time
 import urllib.request
 
+from ecoshard import geoprocessing
+from ecoshard.geoprocessing import symbolic
 from osgeo import gdal
 from retrying import retry
 import numpy
-import pygeoprocessing
-import pygeoprocessing.symbolic
+
 
 LOGGER = logging.getLogger(__name__)
 
 gdal.SetCacheMax(2**26)
+
+RASTER_CALCULATIONS_WORKSPACE = 'raster_calculations_workspace_not_for_humans'
+
+# from taskgraph.Task import _normalize_path
+
+# class AttrArray(numpy.ndarray):
+#     """Numpy array with new attribute."""
+#     def __new__(cls, input_array, your_new_attr=None):
+#         obj = numpy.asarray(input_array).view(cls)
+#         obj.your_new_attr = your_new_attr
+#         return obj
+
+#     def __array_finalize__(self, obj):
+#         if obj is None:
+#             return
+#         self.your_new_attr = getattr(obj, 'your_new_attr', None)
+
+# def fast_raster_calculator(
+#         raster_path_map, local_op, target_path,
+#         datatype_target=gdal.GDT_Float32, nodata_target=None,
+#         align_rasters=True, target_projection_wkt=None,
+#         target_pixel_size=None):
+#     """Perform raster calculations assuming single band rasters."""
+#     raster_path_map_copy = raster_path_map.copy()
+#     normal_path_list = sorted([
+#         _normalize_path(path) for path in raster_path_map_copy.values()])
+#     hash_func = hashlib.new('md6')
+#     hash_func.update(''.join(normal_path_list))
+#     hash_val = hash_func.hexdigest()
+#     local_workspace = os.path.join(RASTER_CALCULATIONS_WORKSPACE, hash_val)
+#     os.makedirs(local_workspace, exist_ok=True)
+
+#     task_graph = taskgraph.TaskGraph(local_workspace, -1)
+
+#     download_task_list = []
+#     for symbol, path in list(raster_path_map_copy.items()):
+#         if isinstance(path, str) and (
+#                 path.startswith('http://') or path.startswith('https://')):
+#             # download to local file
+#             local_path = os.path.join(
+#                 local_workspace,
+#                 os.path.basename(path))
+#             download_task = task_graph.add_task(
+#                 func=download_url,
+#                 args=(path, local_path),
+#                 target_path_list=[local_path],
+#                 task_name='download %s' % local_path)
+#             download_task_list.append(download_task)
+#             raster_path_map_copy[symbol] = local_path
+#         else:
+#             raster_path_map_copy[symbol] = path
+#     task_graph.join()
+
+#     first_raster_path = next(iter(raster_path_map.values()))
+#     raster_info = geoprocessing.get_raster_info(first_raster_path)
+#     if target_projection_wkt is None:
+#         target_projection_wkt = raster_info['projection_wkt']
+#     if target_pixel_size is None:
+#         target_pixel_size = raster_info['pixel_size']
+
+#     if align_rasters:
+#         align_raster_list = [
+#             os.path.join(local_workspace, os.path.basename(path))
+#             for path in normal_path_list]
+#         geoprocessing.align_and_resize_raster_stack(
+#             normal_path_list, align_raster_list,
+#             ['near']*len(normal_path_list),
+#             target_pixel_size, 'intersection',
+#             target_projection_wkt=target_projection_wkt)
+#         raster_info = geoprocessing.get_raster_info(normal_path_list[0])
+#     else:
+#         align_raster_list = normal_path_list
+
+#     raster_driver = gdal.GetDriverByName('GTiff')
+#     n_cols, n_rows = raster_info_list[0]['raster_size']
+#     target_raster = raster_driver.Create(
+#         target_raster_path, n_cols, n_rows, 1, datatype_target,
+#         options=raster_driver_creation_tuple[1])
+
+#     block_offset_list = list(iterblocks(
+#         (target_raster_path, 1), offset_only=True,
+#         largest_block=largest_block))
+
 
 
 def evaluate_calculation(args, task_graph, workspace_dir):
@@ -106,6 +190,9 @@ def evaluate_calculation(args, task_graph, workspace_dir):
     resample_method = 'near'
     if 'resample_method' in args:
         resample_method = args['resample_method']
+    bounding_box_mode = 'intersection'
+    if 'bounding_box_mode' in args:
+        bounding_box_mode = args['bounding_box_mode']
     preprocess_task = task_graph.add_task(
         func=_preprocess_rasters,
         args=(
@@ -114,7 +201,8 @@ def evaluate_calculation(args, task_graph, workspace_dir):
         kwargs={
             'target_projection_wkt': target_projection_wkt,
             'target_pixel_size': target_pixel_size,
-            'resample_method': resample_method},
+            'resample_method': resample_method,
+            'bounding_box_mode': bounding_box_mode},
         dependent_task_list=download_task_list,
         target_path_list=[processed_raster_list_file_path],
         task_name='preprocess rasters for %s' % args['target_raster_path'])
@@ -187,7 +275,7 @@ def _evaluate_expression(
         LOGGER.debug(
             'doing percentile of %s to %s', base_raster_path_band,
             percentile_threshold)
-        percentile_val = pygeoprocessing.raster_band_percentile(
+        percentile_val = geoprocessing.raster_band_percentile(
             base_raster_path_band, working_sort_directory,
             [percentile_threshold])[0]
         expression = '%s%f%s' % (
@@ -195,7 +283,7 @@ def _evaluate_expression(
         LOGGER.debug('new expression: %s', expression)
 
     if not expression.startswith('mask(raster'):
-        pygeoprocessing.symbolic.evaluate_raster_calculator_expression(
+        symbolic.evaluate_raster_calculator_expression(
             expression, args['symbol_to_path_band_map'],
             args['target_nodata'], args['target_raster_path'],
             default_nan=default_nan, default_inf=default_inf)
@@ -239,8 +327,8 @@ def mask_raster_by_array(
         None.
 
     """
-    raster_info = pygeoprocessing.get_raster_info(raster_path_band[0])
-    pygeoprocessing.multiprocessing.raster_calculator(
+    raster_info = geoprocessing.get_raster_info(raster_path_band[0])
+    geoprocessing.multiprocessing.raster_calculator(
         [raster_path_band,
          (raster_info['nodata'][raster_path_band[1]-1], 'raw'),
          (numpy.array(mask_array), 'raw'), (2, 'raw'), (invert, 'raw')],
@@ -319,7 +407,8 @@ def _make_logger_callback(message):
 def _preprocess_rasters(
         base_raster_path_list, churn_dir,
         target_processed_raster_list_file_path, target_projection_wkt=None,
-        target_pixel_size=None, resample_method='near'):
+        target_pixel_size=None, resample_method='near',
+        bounding_box_mode='intersection'):
     """Process base raster path list so it can be used in raster calcs.
 
     Parameters:
@@ -343,15 +432,19 @@ def _preprocess_rasters(
         resample_method (str): if the symbol rasters need to be resized for
             any reason, this method is used. The value can be one of:
             "near|bilinear|cubic|cubicspline|lanczos|average|mode|max".
+        bounding_box_mode (string): one of "union", "intersection", or
+            a sequence of floats of the form [minx, miny, maxx, maxy] in the
+            target projection coordinate system.  Depending
+            on the value, output extents are defined as the union,
+            intersection, or the explicit bounding box.
 
-    Returns:
-
-
+    Return:
+        ``None``
     """
     resample_inputs = False
 
     base_info_list = [
-        pygeoprocessing.get_raster_info(path)
+        geoprocessing.get_raster_info(path)
         for path in base_raster_path_list]
     base_projection_list = [info['projection_wkt'] for info in base_info_list]
     base_pixel_list = [info['pixel_size'] for info in base_info_list]
@@ -415,11 +508,12 @@ def _preprocess_rasters(
             os.path.join(churn_dir, os.path.basename(path)) for path in
             base_raster_path_list]
         if not same_pixel_sizes or not same_raster_sizes:
-            pygeoprocessing.align_and_resize_raster_stack(
+            geoprocessing.align_and_resize_raster_stack(
                 base_raster_path_list, operand_raster_path_list,
                 [resample_method]*len(base_raster_path_list),
-                target_pixel_size, 'intersection',
-                target_projection_wkt=target_projection_wkt)
+                target_pixel_size, bounding_box_mode,
+                target_projection_wkt=target_projection_wkt,
+                )
         else:
             # no need to realign, just hard link it
             for base_path, target_path in zip(

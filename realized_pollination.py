@@ -8,10 +8,10 @@ import scipy
 import numpy
 from osgeo import osr
 from osgeo import gdal
-import pygeoprocessing
-import taskgraph
+from ecoshard import taskgraph
+import ecoshard.geoprocessing as pygeoprocessing
 import ecoshard
-from pygeoprocessing.geoprocessing import _create_latitude_m2_area_column
+from ecoshard.geoprocessing import _create_latitude_m2_area_column
 
 BASE_RASTER_URL_MAP = {
     #'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2018_md5_70108076f518142b7c4c367f50bf0506.tif',
