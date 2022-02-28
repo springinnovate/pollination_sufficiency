@@ -124,12 +124,12 @@ def main():
         task_name='make convolution kernel')
 
     aligned_ppl_fed_raster_path = (
-        '%s_aligned%s' % os.path.splitext(args['ppl_fed_path']))
+        '%s_aligned%s' % os.path.splitext(args.ppl_fed_path))
     align_ppl_fed_per_pixel_task = task_graph.add_task(
         func=_align_and_adjust_area,
         args=(
-            args['hab_mask_path'],
-            args['ppl_fed_path'],
+            args.hab_mask_path,
+            args.ppl_fed_path,
             aligned_ppl_fed_raster_path),
         target_path_list=[aligned_ppl_fed_raster_path],
         task_name=f'align and adjust area for {aligned_ppl_fed_raster_path}')
@@ -162,7 +162,7 @@ def main():
         func=norm_by_hab_pixels,
         args=(
             aligned_ppl_fed_raster_path,
-            args['hab_mask_path'],
+            args.hab_mask_path,
             kernel_raster_path,
             ppl_fed_div_hab_pixels_raster_path,
             norm_ppl_fed_within_2km_pixels_raster_path),
@@ -181,7 +181,7 @@ def main():
         func=pygeoprocessing.raster_calculator,
         args=(
             [(ppl_fed_per_pixel_raster_path, 1),
-             (args['hab_mask_path'], 1)],
+             (args.hab_mask_path, 1)],
             _mask_op, ppl_fed_coverage_mask_to_hab_raster_path,
             gdal.GDT_Float32, -1),
         dependent_task_list=[ppl_fed_per_pixel_task],
@@ -195,7 +195,7 @@ def main():
         func=pygeoprocessing.raster_calculator,
         args=(
             [(norm_ppl_fed_within_2km_pixels_raster_path, 1),
-             (args['hab_mask_path'], 1)],
+             (args.hab_mask_path, 1)],
             _mask_op, norm_ppl_fed_coverage_mask_to_hab_raster_path,
             gdal.GDT_Float32, -1),
         dependent_task_list=[norm_by_hab_pixel_task],
