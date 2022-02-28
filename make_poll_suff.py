@@ -21,12 +21,12 @@ from osgeo import osr
 import ecoshard
 import numpy
 import pandas
-import pygeoprocessing
+import ecoshard.geoprocessing as pygeoprocessing
+from ecoshard import taskgraph
 import rtree
 import scipy.ndimage.morphology
 import shapely.prepared
 import shapely.wkb
-import taskgraph
 
 # format of the key pairs is [data suffix]: [landcover raster]
 # these must be ESA landcover map type

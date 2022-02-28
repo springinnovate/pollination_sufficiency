@@ -8,9 +8,11 @@ import scipy
 import numpy
 from osgeo import osr
 from osgeo import gdal
-import pygeoprocessing
-import taskgraph
+from ecoshard import taskgraph
+import ecoshard.geoprocessing as pygeoprocessing
 import ecoshard
+from ecoshard.geoprocessing import _create_latitude_m2_area_column
+
 
 WORKSPACE_DIR = 'workspace_realized_pollination'
 CHURN_DIR = os.path.join(WORKSPACE_DIR, 'churn')
