@@ -116,7 +116,14 @@ def main():
     parser.add_argument(
         '--hab_mask_path', required=True, type=str,
         help='Path to habitat mask')
+    parser.add_argument(
+        '--suffix', type=str,
+        help='Suffix to add to result filename')
     args = parser.parse_args()
+    if args.suffix:
+        suffix = f'_{args.suffix}'
+    else:
+        suffix = ''
     task_graph = taskgraph.TaskGraph(CHURN_DIR, 4, 5.0)
     kernel_raster_path = os.path.join(CHURN_DIR, 'radial_kernel.tif')
     kernel_task = task_graph.add_task(
@@ -138,7 +145,7 @@ def main():
 
     # calculate extent of ppl fed by 2km.
     ppl_fed_per_pixel_raster_path = os.path.join(
-        CHURN_DIR, 'ppl_fed_per_pixel.tif')
+        CHURN_DIR, f'ppl_fed_per_pixel{suffix}.tif')
     ppl_fed_per_pixel_task = task_graph.add_task(
         func=pygeoprocessing.convolve_2d,
         args=[
@@ -157,9 +164,9 @@ def main():
             f' {os.path.basename(ppl_fed_per_pixel_raster_path)}'))
 
     ppl_fed_div_hab_pixels_raster_path = os.path.join(
-        CHURN_DIR, 'ppl_fed_div_hab_pixels_in_2km.tif')
+        CHURN_DIR, f'ppl_fed_div_hab_pixels_in_2km{suffix}.tif')
     norm_ppl_fed_within_2km_pixels_raster_path = os.path.join(
-        CHURN_DIR, 'norm_ppl_fed_within_2km_per_pixel.tif')
+        CHURN_DIR, f'norm_ppl_fed_within_2km_per_pixel{suffix}.tif')
     norm_by_hab_pixel_task = task_graph.add_task(
         func=norm_by_hab_pixels,
         args=(
@@ -177,7 +184,7 @@ def main():
 
     # mask to hab
     ppl_fed_coverage_mask_to_hab_raster_path = (
-        '%s_mask_to_hab%s' % os.path.splitext(
+        f'%s_mask_to_hab{suffix}%s' % os.path.splitext(
             ppl_fed_per_pixel_raster_path))
     mask_ppl_fed_coverage_task = task_graph.add_task(
         func=pygeoprocessing.raster_calculator,
@@ -191,7 +198,7 @@ def main():
         task_name='mask ppl fed mask')
 
     norm_ppl_fed_coverage_mask_to_hab_raster_path = (
-        '%s_mask_to_hab%s' % os.path.splitext(
+        f'%s_mask_to_hab{suffix}%s' % os.path.splitext(
             norm_ppl_fed_within_2km_pixels_raster_path))
     mask_normalized_ppl_fed_per_pixel_task = task_graph.add_task(
         func=pygeoprocessing.raster_calculator,
