@@ -60,7 +60,7 @@ def main():
                'raster1': "monfreda_2008_yield_poll_dep_ppl_fed_5min.tif", #https://storage.googleapis.com/critical-natural-capital-ecoshards/monfreda_2008_yield_poll_dep_ppl_fed_5min.tif
                'raster2': r"workspace_poll_suff\churn\poll_suff_hab_ag_coverage_rasters\poll_suff_ag_coverage_prop_10s_forest_conversion_2050_md5_abda51.tif",
                'raster3': "esa_pixel_area_ha_md5_1dd3298a7c4d25c891a11e01868b5db6.tif", # https://storage.googleapis.com/ecoshard-root/esa_pixel_area_ha_md5_1dd3298a7c4d25c891a11e01868b5db6.tif
-               'raster4': r"workspace_poll_suff\churn\ag_mask\forest_conversion_2050_md5_abda51_ag_mask.tif"
+               'raster4': r"workspace_poll_suff\churn\ag_mask\forest_conversion_2050_md5_abda51_ag_mask.tif",
             },
             'target_nodata': -9999,
             'target_pixel_size': (0.0027777777777777778,-0.0027777777777777778),
@@ -183,6 +183,7 @@ def main():
     ###########NEXT: python add_sub_missing_as_0.py --subtract "D:\ecoshard\TNC\pollination_ppl_fed_on_ag_10s_forest_conversion_2050.tif" "D:\ecoshard\TNC\pollination_ppl_fed_on_ag_10s_esa2020mar.tif"
     ###########NEXT: python add_sub_missing_as_0.py --subtract "D:\ecoshard\TNC\reforestation_full_griscom_extent_compressed_md5_e42c6c.tif" "D:\ecoshard\TNC\pollination_ppl_fed_on_ag_10s_esa2020mar.tif"
 
+
     #then run realized pollination:
     # docker run -d --name pollination_container --rm -v %CD%:/usr/local/workspace therealspring/inspring:latest realized_pollination.py pollination_ppl_fed_on_ag_10s_esa2020mVCF.tif && docker logs pollination_container -f
     # docker run -d --name pollination_container --rm -v %CD%:/usr/local/workspace therealspring/inspring:latest realized_pollination.py pollination_ppl_fed_on_ag_10s_Sc2_Griscom_CookPatton.tif && docker logs pollination_container -f
@@ -194,6 +195,7 @@ def main():
     #python realized_pollination.py --ppl_fed_path "pollination_ppl_fed_on_ag_10s_Sc2v4_Griscom2035_md5_ffee3   -  pollination_ppl_fed_on_ag_10s_esa2020_md5_0cf902.tif" --hab_mask_path "Sc2v4_Griscom_CookPatton2035_smithpnv_md5_ffde2403583e30d7df4d16a0687d71fe_hab_mask.tif" --suffix _Sc2v4Griscom2035-ESA
     #python realized_pollination.py --ppl_fed_path "pollination_ppl_fed_on_ag_10s_esa1992mar_md5_073a8b.tif" --hab_mask_path "D:\repositories\pollination_sufficiency\workspace_poll_suff\churn\hab_mask\marine_ESACCI-LC-L4-LCCS-Map-300m-P1Y-1992-v2.0.7cds_compressed_md5_83ec1b_hab_mask.tif" --suffix _ESA1992mar
     #python realized_pollination.py --ppl_fed_path "pollination_ppl_fed_on_ag_10s_esa2020mar_md5_684b65.tif" --hab_mask_path "D:\repositories\pollination_sufficiency\workspace_poll_suff\churn\hab_mask\marine_ESACCI-LC-L4-LCCS-Map-300m-P1Y-2020-v2.1.1_md5_e6a8da_hab_mask.tif" --suffix _ESA2020mar
+
 
 
 if __name__ == '__main__':

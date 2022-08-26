@@ -1,4 +1,5 @@
 """Map people fed equivalents back to ESA habitat."""
+import argparse
 import os
 import logging
 import sys
@@ -7,24 +8,14 @@ import scipy
 import numpy
 from osgeo import osr
 from osgeo import gdal
-import pygeoprocessing
-import taskgraph
-import raster_calculations_core
-import compress_and_overview
-
-BASE_RASTER_URL_MAP = {
-    'ppl_fed': 'https://storage.googleapis.com/ecoshard-root/working-shards/pollination_ppl_fed_on_ag_10s_esa2018_md5_70108076f518142b7c4c367f50bf0506.tif',
-    'hab_mask': 'https://storage.googleapis.com/ecoshard-root/working-shards/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2018-v2.1.1_hab_mask_md5_9afb78a2cc68a7bf6bba947761d74fc3.tif',
-}
+from ecoshard import taskgraph
+import ecoshard.geoprocessing as pygeoprocessing
+import ecoshard
+from ecoshard.geoprocessing import _create_latitude_m2_area_column
 
 
 WORKSPACE_DIR = 'workspace_realized_pollination'
 CHURN_DIR = os.path.join(WORKSPACE_DIR, 'churn')
-ECOSHARD_DIR = os.path.join(WORKSPACE_DIR, 'ecoshard')
-REALIZED_POLLINATION_RASTER_PATH = os.path.join(
-    WORKSPACE_DIR, 'realized_pollination.tif')
-REALIZED_POLLINATION_COMPRESSED_RASTER_PATH = os.path.join(
-    WORKSPACE_DIR, 'realized_pollination_with_overviews.tif')
 TARGET_NODATA = -1
 
 logging.basicConfig(
@@ -34,6 +25,17 @@ logging.basicConfig(
         ' [%(funcName)s:%(lineno)d] %(message)s'),
     stream=sys.stdout)
 LOGGER = logging.getLogger(__name__)
+logging.getLogger('taskgraph').setLevel(logging.INFO)
+logging.getLogger('pygeoprocessing').setLevel(logging.INFO)
+logging.getLogger('ecoshard').setLevel(logging.INFO)
+
+
+def _mask_op(base_array, mask_array):
+    result = numpy.copy(base_array)
+    # ensure mask that is close to 0 is 0.
+    result[numpy.isclose(result, 0)] = 0
+    result[mask_array != 1] = -1  # -1 is nodata
+    return result
 
 
 def _nodata_to_zero_op(base_array, base_nodata):
@@ -43,91 +45,201 @@ def _nodata_to_zero_op(base_array, base_nodata):
     return result
 
 
+def _make_mask_op(base_array, base_nodata):
+    result = numpy.full(base_array.shape, False, dtype=bool)
+    result[~numpy.isclose(base_array, base_nodata)] = True
+    return result
+
+
+def _div_op(num, denom):
+    result = numpy.full(num.shape, -1, dtype=numpy.float32)
+    valid_mask = (num > 0) & (denom > 0)
+    result[valid_mask] = num[valid_mask] / denom[valid_mask]
+    result[numpy.isclose(num, 0)] = 0
+    return result
+
+
+def compress_and_build_overviews(base_raster_path, target_raster_path):
+    ecoshard.compress_raster(
+        base_raster_path, target_raster_path)
+    ecoshard.build_overviews(target_raster_path)
+
+
+def _align_and_adjust_area(
+        base_raster_path, value_raster_path, target_raster_path):
+    """Target the same size as base with value in it adjusted for pixel."""
+    base_raster_info = pygeoprocessing.get_raster_info(base_raster_path)
+    target_pixel_size = base_raster_info['pixel_size']
+    pygeoprocessing.warp_raster(
+        value_raster_path, target_pixel_size, target_raster_path,
+        'average', target_bb=base_raster_info['bounding_box'])
+
+
+def norm_by_hab_pixels(
+        ppl_fed_raster_path,
+        hab_mask_raster_path,
+        kernel_raster_path,
+        ppl_fed_div_hab_pixels_raster_path,
+        norm_ppl_fed_within_2km_pixels_raster_path):
+    # calculate count of hab pixels within 2km.
+    hab_pixels_within_2km_raster_path = os.path.join(
+        CHURN_DIR, 'hab_pixels_within_2km.tif')
+    if not os.path.exists(hab_pixels_within_2km_raster_path):
+        pygeoprocessing.convolve_2d(
+            (hab_mask_raster_path, 1), (kernel_raster_path, 1),
+            hab_pixels_within_2km_raster_path,
+            working_dir=CHURN_DIR,
+            mask_nodata=False,
+            ignore_nodata_and_edges=False,
+            normalize_kernel=False)
+    pygeoprocessing.raster_calculator(
+        [(ppl_fed_raster_path, 1), (hab_pixels_within_2km_raster_path, 1)],
+        _div_op, ppl_fed_div_hab_pixels_raster_path, gdal.GDT_Float32, -1)
+
+    pygeoprocessing.convolve_2d(
+        (ppl_fed_div_hab_pixels_raster_path, 1), (kernel_raster_path, 1),
+        norm_ppl_fed_within_2km_pixels_raster_path,
+        working_dir=CHURN_DIR,
+        mask_nodata=False,
+        ignore_nodata_and_edges=False,
+        normalize_kernel=False)
+
+
 def main():
     """Entry point."""
-    for dir_path in [WORKSPACE_DIR, CHURN_DIR, ECOSHARD_DIR]:
-        try:
-            os.makedirs(dir_path)
-        except OSError:
-            pass
-    task_graph = taskgraph.TaskGraph(CHURN_DIR, -1, 5.0)
+    for dir_path in [WORKSPACE_DIR, CHURN_DIR]:
+        os.makedirs(dir_path, exist_ok=True)
+    parser = argparse.ArgumentParser(description='Realized Pollination')
+    parser.add_argument(
+        '--ppl_fed_path', required=True, type=str,
+        help='Path to people fed raster')
+    parser.add_argument(
+        '--hab_mask_path', required=True, type=str,
+        help='Path to habitat mask')
+    parser.add_argument(
+        '--suffix', type=str,
+        help='Suffix to add to result filename')
+    args = parser.parse_args()
+    if args.suffix:
+        suffix = f'_{args.suffix}'
+    else:
+        suffix = ''
+    task_graph = taskgraph.TaskGraph(CHURN_DIR, 4, 5.0)
     kernel_raster_path = os.path.join(CHURN_DIR, 'radial_kernel.tif')
     kernel_task = task_graph.add_task(
         func=create_flat_radial_convolution_mask,
         args=(0.00277778, 2000., kernel_raster_path),
         target_path_list=[kernel_raster_path],
         task_name='make convolution kernel')
-    hab_fetch_path_map = {}
-    # download hab mask and ppl fed equivalent raster
-    for raster_id, raster_url in BASE_RASTER_URL_MAP.items():
-        raster_path = os.path.join(ECOSHARD_DIR, os.path.basename(raster_url))
-        _ = task_graph.add_task(
-            func=raster_calculations_core.download_url,
-            args=(raster_url, raster_path),
-            target_path_list=[raster_path],
-            task_name='fetch hab mask')
-        hab_fetch_path_map[raster_id] = raster_path
-    task_graph.join()
 
-    hab_mask_raster_info = pygeoprocessing.get_raster_info(
-        hab_fetch_path_map['hab_mask'])
-
-    ppl_fed_raster_info = pygeoprocessing.get_raster_info(
-        hab_fetch_path_map['ppl_fed'])
-
-    ppl_fed_nodata_to_zero_path = os.path.join(
-        CHURN_DIR, 'ppl_fed__nodata_to_zero.tif')
-
-    task_graph.add_task(
-        func=pygeoprocessing.raster_calculator,
+    aligned_ppl_fed_raster_path = (
+        '%s_aligned%s' % os.path.splitext(args.ppl_fed_path))
+    align_ppl_fed_per_pixel_task = task_graph.add_task(
+        func=_align_and_adjust_area,
         args=(
-            [(hab_fetch_path_map['ppl_fed'], 1),
-             (ppl_fed_raster_info['nodata'][0], 'raw')],
-            _nodata_to_zero_op, ppl_fed_nodata_to_zero_path,
-            gdal.GDT_Float32, None),
-        target_path_list=[ppl_fed_nodata_to_zero_path],
-        task_name='hab mask nodata to zero')
-    task_graph.join()
+            args.hab_mask_path,
+            args.ppl_fed_path,
+            aligned_ppl_fed_raster_path),
+        target_path_list=[aligned_ppl_fed_raster_path],
+        task_name=f'align and adjust area for {aligned_ppl_fed_raster_path}')
 
     # calculate extent of ppl fed by 2km.
-    ppl_fed_reach_raster_path = os.path.join(CHURN_DIR, 'ppl_fed_reach.tif')
-    ppl_fed_reach_task = task_graph.add_task(
+    ppl_fed_per_pixel_raster_path = os.path.join(
+        CHURN_DIR, f'ppl_fed_per_pixel{suffix}.tif')
+    ppl_fed_per_pixel_task = task_graph.add_task(
         func=pygeoprocessing.convolve_2d,
         args=[
-            (ppl_fed_nodata_to_zero_path, 1), (kernel_raster_path, 1),
-            ppl_fed_reach_raster_path],
+            (aligned_ppl_fed_raster_path, 1), (kernel_raster_path, 1),
+            ppl_fed_per_pixel_raster_path],
         kwargs={
             'working_dir': CHURN_DIR,
             'mask_nodata': False,
-            'raster_driver_creation_tuple': (
-                'GTiff', (
-                    'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=ZSTD',
-                    'PREDICTOR=1', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256',
-                    'NUM_THREADS=2'))},
-        dependent_task_list=[kernel_task],
-        target_path_list=[ppl_fed_reach_raster_path],
-        task_name=(
-            'calculate natural hab proportion'
-            f' {os.path.basename(ppl_fed_reach_raster_path)}'))
-
-    # mask ppl fed reach by the hab mask.
-    raster_calculations_core.evaluate_calculation(
-        {
-            'expression': 'ppl_fed_reach*(hab_mask>0.0)',
-            'symbol_to_path_map': {
-                'ppl_fed_reach': ppl_fed_reach_raster_path,
-                'hab_mask': hab_fetch_path_map['hab_mask'],
+            'ignore_nodata_and_edges': False,
+            'normalize_kernel': False,
             },
-            'target_pixel_size': hab_mask_raster_info['pixel_size'],
-            'target_nodata': TARGET_NODATA,
-            'target_raster_path': REALIZED_POLLINATION_RASTER_PATH,
-        }, task_graph, CHURN_DIR)
+        dependent_task_list=[kernel_task, align_ppl_fed_per_pixel_task],
+        target_path_list=[ppl_fed_per_pixel_raster_path],
+        task_name=(
+            'calc people fed reach'
+            f' {os.path.basename(ppl_fed_per_pixel_raster_path)}'))
+
+    ppl_fed_div_hab_pixels_raster_path = os.path.join(
+        CHURN_DIR, f'ppl_fed_div_hab_pixels_in_2km{suffix}.tif')
+    norm_ppl_fed_within_2km_pixels_raster_path = os.path.join(
+        CHURN_DIR, f'norm_ppl_fed_within_2km_per_pixel{suffix}.tif')
+    norm_by_hab_pixel_task = task_graph.add_task(
+        func=norm_by_hab_pixels,
+        args=(
+            aligned_ppl_fed_raster_path,
+            args.hab_mask_path,
+            kernel_raster_path,
+            ppl_fed_div_hab_pixels_raster_path,
+            norm_ppl_fed_within_2km_pixels_raster_path),
+        dependent_task_list=[
+            align_ppl_fed_per_pixel_task, kernel_task],
+        target_path_list=[
+            ppl_fed_div_hab_pixels_raster_path,
+            norm_ppl_fed_within_2km_pixels_raster_path],
+        task_name='calc ppl fed div hab pixels')
+
+    # mask to hab
+    ppl_fed_coverage_mask_to_hab_raster_path = (
+        f'%s_mask_to_hab{suffix}%s' % os.path.splitext(
+            ppl_fed_per_pixel_raster_path))
+    mask_ppl_fed_coverage_task = task_graph.add_task(
+        func=pygeoprocessing.raster_calculator,
+        args=(
+            [(ppl_fed_per_pixel_raster_path, 1),
+             (args.hab_mask_path, 1)],
+            _mask_op, ppl_fed_coverage_mask_to_hab_raster_path,
+            gdal.GDT_Float32, -1),
+        dependent_task_list=[ppl_fed_per_pixel_task],
+        target_path_list=[ppl_fed_coverage_mask_to_hab_raster_path],
+        task_name='mask ppl fed mask')
+
+    norm_ppl_fed_coverage_mask_to_hab_raster_path = (
+        f'%s_mask_to_hab{suffix}%s' % os.path.splitext(
+            norm_ppl_fed_within_2km_pixels_raster_path))
+    mask_normalized_ppl_fed_per_pixel_task = task_graph.add_task(
+        func=pygeoprocessing.raster_calculator,
+        args=(
+            [(norm_ppl_fed_within_2km_pixels_raster_path, 1),
+             (args.hab_mask_path, 1)],
+            _mask_op, norm_ppl_fed_coverage_mask_to_hab_raster_path,
+            gdal.GDT_Float32, -1),
+        dependent_task_list=[norm_by_hab_pixel_task],
+        target_path_list=[norm_ppl_fed_coverage_mask_to_hab_raster_path],
+        task_name='mask normalized ppl fed mask')
+
+    # compress and ecoshard result
+    compressed_ppl_fed_coverage_mask_to_hab_raster_path = os.path.join(
+        WORKSPACE_DIR, os.path.basename('%s_compressed%s' % os.path.splitext(
+            ppl_fed_coverage_mask_to_hab_raster_path)))
+    compressed_norm_ppl_fed_coverage_mask_to_hab_raster_path = os.path.join(
+        WORKSPACE_DIR, os.path.basename('%s_compressed%s' % os.path.splitext(
+            norm_ppl_fed_coverage_mask_to_hab_raster_path)))
+
+    task_graph.add_task(
+        func=compress_and_build_overviews,
+        args=(
+            ppl_fed_coverage_mask_to_hab_raster_path,
+            compressed_ppl_fed_coverage_mask_to_hab_raster_path),
+        target_path_list=[compressed_ppl_fed_coverage_mask_to_hab_raster_path],
+        dependent_task_list=[mask_ppl_fed_coverage_task],
+        task_name=f'''compressing {
+            compressed_ppl_fed_coverage_mask_to_hab_raster_path}''')
+    task_graph.add_task(
+        func=compress_and_build_overviews,
+        args=(
+            norm_ppl_fed_coverage_mask_to_hab_raster_path,
+            compressed_norm_ppl_fed_coverage_mask_to_hab_raster_path),
+        target_path_list=[
+            compressed_norm_ppl_fed_coverage_mask_to_hab_raster_path],
+        dependent_task_list=[mask_normalized_ppl_fed_per_pixel_task],
+        task_name=f'''compressing {
+            compressed_norm_ppl_fed_coverage_mask_to_hab_raster_path}''')
+
     task_graph.join()
-
-    compress_and_overview.compress_to(
-        task_graph, REALIZED_POLLINATION_RASTER_PATH, 'bilinear',
-        REALIZED_POLLINATION_COMPRESSED_RASTER_PATH)
-
     task_graph.close()
 
 

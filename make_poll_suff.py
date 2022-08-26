@@ -21,12 +21,12 @@ from osgeo import osr
 import ecoshard
 import numpy
 import pandas
-import pygeoprocessing
+import ecoshard.geoprocessing as pygeoprocessing
+from ecoshard import taskgraph
 import rtree
 import scipy.ndimage.morphology
 import shapely.prepared
 import shapely.wkb
-import taskgraph
 
 # format of the key pairs is [data suffix]: [landcover raster]
 # these must be ESA landcover map type
@@ -41,8 +41,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format=(
         '%(asctime)s (%(relativeCreated)d) %(levelname)s %(name)s'
-        ' [%(pathname)s.%(funcName)s:%(lineno)d] %(message)s'),
-    stream=sys.stdout)
+        ' [%(pathname)s.%(funcName)s:%(lineno)d] %(message)s'))
 LOGGER = logging.getLogger('pollination')
 logging.getLogger('taskgraph').setLevel(logging.INFO)
 
