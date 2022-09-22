@@ -502,7 +502,6 @@ def main():
         ppf_info = geoprocessing.get_raster_info(potential_people_fed_path)
         base_info = geoprocessing.get_raster_info(scenario_params['LANDCOVER'])
 
-        ppf_warp_task_list = []
         if ppf_info['bounding_box'] != base_info['bounding_box']:
             LOGGER.info(
                 f'warp {potential_people_fed_path} to overlap with '
@@ -520,9 +519,8 @@ def main():
                     'target_projection_wkt': base_info['projection_wkt'],
                     'n_threads': multiprocessing.cpu_count()},
                 target_path_list=[aligned_potential_people_fed],)
-            ppf_warp_task_list.append(ppf_warp_task_list)
             potential_people_fed_path = aligned_potential_people_fed
-
+            ppf_warp_task.join()
 
         if abs(base_info['pixel_size'][0]) > 10:
             LOGGER.info('assuming linear projection')
@@ -534,7 +532,7 @@ def main():
                 base_info['bounding_box'][1],
                 base_info['raster_size'][1])
             pixel_area = area_of_pixel(base_info['pixel_size'][0], lat_array)
-            LOGGER.debug(pixel_area)
+            pixel_area = pixel_area.reshape(-1, 1)
 
         potential_people_fed_nodata = geoprocessing.get_raster_info(
             potential_people_fed_path)['nodata']
@@ -550,9 +548,10 @@ def main():
                  (poll_suff_ag_nodata, 'raw')],
                 _pollinatinon_ppl_fed_on_ag, target_poll_fed_on_ag_raster_path,
                 gdal.GDT_Float32, _MULT_NODATA),
-            dependent_task_list=ppf_warp_task_list,
             target_path_list=[target_poll_fed_on_ag_raster_path],
             task_name='calculate pollination people fed on ag')
+    task_graph.join()
+    task_graph.close()
 
 
 def _pollinatinon_ppl_fed_on_ag(
