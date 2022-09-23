@@ -363,10 +363,10 @@ def mult_rasters(raster_a_path, raster_b_path, target_path):
     nodata_b = raster_info_b['nodata'][0]
 
     if raster_info_a['raster_size'] != raster_info_b['raster_size']:
-        aligned_raster_a_path = (
-            target_path + os.path.basename(raster_a_path) + '_aligned.tif')
-        aligned_raster_b_path = (
-            target_path + os.path.basename(raster_b_path) + '_aligned.tif')
+        aligned_raster_a_path = os.path.join(
+            CHURN_DIR, '%s_aligned%s' % os.path.splitext(os.path.basename(raster_a_path)))
+        aligned_raster_b_path = os.path.join(
+            CHURN_DIR, '%s_aligned%s' % os.path.splitext(os.path.basename(raster_b_path)))
         geoprocessing.align_and_resize_raster_stack(
             [raster_a_path, raster_b_path],
             [aligned_raster_a_path, aligned_raster_b_path],
