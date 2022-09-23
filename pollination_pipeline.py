@@ -480,13 +480,15 @@ def main():
         'configuration_path', type=str, nargs='+',
         help=(
             'Paths or patterns to pollination pipline configuration files, expects to see: ' +
-            ', '.join(EXPECTED_INI_KEYS)),
+            ', '.join(EXPECTED_INI_KEYS)))
+    parser.add_argument(
         '--validate_ini_only', action='store_true',
         help='if set, INI files are only checked for correctness')
     args = parser.parse_args()
     scenario_configs = _validate_config_files(args.configuration_path)
     if args.validate_ini_only:
-        LOGGER.info('Good job, ALL INI files checked look OK!')
+        LOGGER.info('\n\t\t*********> Good job, ALL INI files that I saw looked OK! <*********')
+        return
 
     task_graph = taskgraph.TaskGraph(
         WORKING_DIR, N_WORKERS, reporting_interval=5.0)
