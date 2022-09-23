@@ -80,23 +80,22 @@ N_WORKERS = max(1, multiprocessing.cpu_count())
 
 
 def calculate_poll_suff(
-        task_graph, landcover_path, kernel_raster_path, ag_codes, natural_codes):
+        task_graph, scenario_name, landcover_path, kernel_raster_path, output_dir, ag_codes, natural_codes):
     """Calculate values for a given landcover.
     Parameters:
         task_graph (taskgraph.TaskGraph): taskgraph object used to schedule
             work.
+        scenario_name (str): string to use as unique filename key
         landcover_path (str): path to a landcover map with globio style
             landcover codes.
         kernel_raster_path (str): path to integrating kernel raster
+        output_dir (str): directory to put real outputs
         ag_codes/natural_codes (list): list of single integer or tuple
             (min, max) ranges to treat as ag or natural codes.
 
     Returns:
         (path to pollination sufficiency ag coverage, path to hab mask, path to ag mask)
     """
-    landcover_key = os.path.splitext(os.path.basename(landcover_path))[0]
-    output_dir = os.path.join(WORKING_DIR, landcover_key)
-
     # The proportional area of natural within 2 km was calculated for every
     #  pixel of agricultural land (GLOBIO land-cover classes 2, 230, 231, and
     #  232) at 10 arc seconds (~300 m) resolution. This 2 km scale represents
@@ -108,7 +107,7 @@ def calculate_poll_suff(
     mask_task_path_map = {}
     for mask_prefix, globio_codes in [
             ('ag', ag_codes), ('hab', natural_codes)]:
-        mask_key = f'{landcover_key}_{mask_prefix}_mask'
+        mask_key = f'{scenario_name}_{mask_prefix}_mask'
         mask_target_path = os.path.join(
             CHURN_DIR, f'{mask_prefix}_mask',
             f'{mask_key}.tif')
@@ -122,7 +121,7 @@ def calculate_poll_suff(
 
     pollhab_2km_prop_path = os.path.join(
         CHURN_DIR, 'pollhab_2km_prop',
-        f'pollhab_2km_prop_{landcover_key}.tif')
+        f'pollhab_2km_prop_{scenario_name}.tif')
     pollhab_2km_prop_task = task_graph.add_task(
         func=geoprocessing.convolve_2d,
         args=[
@@ -141,7 +140,7 @@ def calculate_poll_suff(
     # by the ag mask
     pollhab_2km_prop_on_ag_path = os.path.join(
         output_dir, f'''pollhab_2km_prop_on_ag_10s_{
-            landcover_key}.tif''')
+            scenario_name}.tif''')
     pollhab_2km_prop_on_ag_task = task_graph.add_task(
         func=mult_rasters,
         args=(
@@ -168,7 +167,7 @@ def calculate_poll_suff(
     threshold_val = 0.3
     pollinator_suff_hab_path = os.path.join(
         CHURN_DIR, 'poll_suff_hab_ag_coverage_rasters',
-        f'poll_suff_ag_coverage_prop_10s_{landcover_key}.tif')
+        f'poll_suff_ag_coverage_prop_10s_{scenario_name}.tif')
     poll_suff_task = task_graph.add_task(
         func=threshold_select_raster,
         args=(
@@ -496,16 +495,20 @@ def main():
         task_name='make convolution kernel')
     kernel_task.join()
 
+
     for scenario_name, scenario_config in scenario_configs:
+        output_dir = os.path.join(WORKING_DIR, f'outputs_{scenario_name}')
+        os.makedirs(output_dir, exist_ok=True)
         scenario_params = _fetch_and_process_config_to_param_map(
             scenario_config, task_graph)
         LOGGER.debug(scenario_params)
         LOGGER.info(f"process landcover map: {scenario_params['LANDCOVER']}")
         poll_suff_ag_path, hab_mask_path, ag_mask_path = calculate_poll_suff(
-            task_graph, scenario_params['LANDCOVER'], kernel_raster_path,
+            task_graph, scenario_name, scenario_params['LANDCOVER'],
+            kernel_raster_path, output_dir,
             scenario_params['AG_CODES'], scenario_params['NATURAL_CODES'])
 
-        ppl_fed_on_ag_raster_path = os.path.join(WORKING_DIR, f'pollination_ppl_fed_on_ag_10s_{scenario_name}.tif')
+        ppl_fed_on_ag_raster_path = os.path.join(output_dir, f'pollination_ppl_fed_on_ag_10s_{scenario_name}.tif')
 
         # align pool, ag, and potential people fed
         potential_people_fed_path = scenario_params['POTENTIAL_PEOPLE_FED']
@@ -584,7 +587,7 @@ def main():
 
         # mask to hab
         ppl_fed_coverage_mask_to_hab_raster_path = os.path.join(
-            WORKING_DIR, f'ppl_fed_per_pixel_masked_to_hab_{scenario_name}.tif')
+            output_dir, f'ppl_fed_per_pixel_masked_to_hab_{scenario_name}.tif')
         mask_ppl_fed_coverage_task = task_graph.add_task(
             func=geoprocessing.raster_calculator,
             args=(
@@ -615,7 +618,7 @@ def main():
             task_name='calc ppl fed div hab pixels')
 
         norm_ppl_fed_coverage_mask_to_hab_raster_path = os.path.join(
-            WORKING_DIR,
+            output_dir,
             f'norm_ppl_fed_within_2km_per_pixel_masked_to_hab_{scenario_name}.tif')
 
         mask_normalized_ppl_fed_per_pixel_task = task_graph.add_task(
