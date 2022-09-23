@@ -107,10 +107,8 @@ def calculate_poll_suff(
     mask_task_path_map = {}
     for mask_prefix, globio_codes in [
             ('ag', ag_codes), ('hab', natural_codes)]:
-        mask_key = f'{scenario_name}_{mask_prefix}_mask'
-        mask_target_path = os.path.join(
-            CHURN_DIR, f'{mask_prefix}_mask',
-            f'{mask_key}.tif')
+        mask_key = f'{mask_prefix}_mask_{scenario_name}'
+        mask_target_path = os.path.join(output_dir, f'{mask_key}.tif')
         mask_task = task_graph.add_task(
             func=mask_raster,
             args=(landcover_path, globio_codes, mask_target_path),
