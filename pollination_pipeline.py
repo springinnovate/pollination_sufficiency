@@ -319,8 +319,8 @@ def mask_raster(base_path, codes, target_path):
         gdal.GDT_Byte, 2)
 
 
-def area_of_pixel(pixel_size, center_lat):
-    """Calculate m^2 area of a wgs84 square pixel.
+def area_of_pixel_in_ha(pixel_size, center_lat):
+    """Calculate Ha area of a wgs84 square pixel.
     Adapted from: https://gis.stackexchange.com/a/127327/2397
     Parameters:
         pixel_size (float): length of side of pixel in degrees.
@@ -342,7 +342,7 @@ def area_of_pixel(pixel_size, center_lat):
             numpy.pi * b**2 * (
                 numpy.log(zp/zm) / (2*e) +
                 numpy.sin(numpy.radians(f)) / (zp*zm)))
-    return pixel_size / 360. * (area_list[0]-area_list[1])
+    return pixel_size / 360. * (area_list[0]-area_list[1]) / 100**2
 
 
 def _mult_raster_op(array_a, array_b, nodata_a, nodata_b, target_nodata):
@@ -531,7 +531,7 @@ def main():
                 base_info['bounding_box'][3],
                 base_info['bounding_box'][1],
                 base_info['raster_size'][1])
-            pixel_area = area_of_pixel(base_info['pixel_size'][0], lat_array)
+            pixel_area = area_of_pixel_in_ha(base_info['pixel_size'][0], lat_array)
             pixel_area = pixel_area.reshape(-1, 1)
 
         potential_people_fed_nodata = geoprocessing.get_raster_info(
