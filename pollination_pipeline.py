@@ -501,6 +501,9 @@ def main():
             scenario_config, task_graph)
         LOGGER.debug(scenario_params)
         LOGGER.info(f"process landcover map: {scenario_params['LANDCOVER']}")
+
+        # make sure scenario_params['LANDCOVER'] is aligned
+
         poll_suff_ag_path, hab_mask_path, ag_mask_path = calculate_poll_suff(
             task_graph, scenario_name, scenario_params['LANDCOVER'],
             kernel_raster_path, output_dir,
@@ -508,7 +511,7 @@ def main():
 
         ppl_fed_on_ag_raster_path = os.path.join(output_dir, f'pollination_ppl_fed_on_ag_10s_{scenario_name}.tif')
 
-        # align pool, ag, and potential people fed
+        # align poll, ag, and potential people fed
         potential_people_fed_path = scenario_params['POTENTIAL_PEOPLE_FED']
         ppf_info = geoprocessing.get_raster_info(potential_people_fed_path)
         base_info = geoprocessing.get_raster_info(scenario_params['LANDCOVER'])
@@ -607,6 +610,7 @@ def main():
                 ppl_fed_on_ag_raster_path,
                 hab_mask_path,
                 kernel_raster_path,
+                scenario_name,
                 ppl_fed_div_hab_pixels_raster_path,
                 norm_ppl_fed_within_2km_pixels_raster_path),
             target_path_list=[
@@ -638,11 +642,12 @@ def norm_by_hab_pixels(
         ppl_fed_raster_path,
         hab_mask_raster_path,
         kernel_raster_path,
+        scenario_name,
         ppl_fed_div_hab_pixels_raster_path,
         norm_ppl_fed_within_2km_pixels_raster_path):
     # calculate count of hab pixels within 2km.
     hab_pixels_within_2km_raster_path = os.path.join(
-        CHURN_DIR, 'hab_pixels_within_2km.tif')
+        CHURN_DIR, f'hab_pixels_within_2km_{scenario_name}.tif')
     if not os.path.exists(hab_pixels_within_2km_raster_path):
         geoprocessing.convolve_2d(
             (hab_mask_raster_path, 1), (kernel_raster_path, 1),
